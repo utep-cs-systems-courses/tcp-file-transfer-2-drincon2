@@ -21,4 +21,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
          data = s.send(bytes(str(line), 'utf-8')) 
    
 print('Received', repr(data))
+s.close()
 

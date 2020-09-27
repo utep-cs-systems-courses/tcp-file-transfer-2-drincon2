@@ -29,11 +29,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
          print("File received!")
          sf.close()
       
-      print("Closing connection to client")
-      conn.close()
+   print("Closing connection to client")
+   conn.close()
 
-print("Closing server socket")
-s.close()
+
       
             
       

@@ -26,8 +26,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
          for line in ctf:
             sf.write(bytes(str(line), 'utf-8'))
          
-         print("File received!")
-         sf.close()
+      print("File received!")
+      sf.close()
       
    print("Closing connection to client")
    conn.close()

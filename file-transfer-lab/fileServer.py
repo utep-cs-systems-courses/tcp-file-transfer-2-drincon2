@@ -20,11 +20,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
       conn, addr = s.accept()
       # File instance
       fi = 1
-      with open("fileTest" + str(fi) + ".txt", "wb") as sf:
+      with open("fileTest" + str(fi) + ".txt", "w") as sf:
          # Client transfer file
          ctf = conn.recv(1024)
-         for line in ctf:
-            sf.write(bytes(str(line), 'utf-8'))
+         udata = ctf.decode('utf-8')
+         for line in udata:
+            sf.write(line)   
          
       print("File received!")
       sf.close()
@@ -32,7 +33,3 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
    print("Closing connection to client")
    conn.close()
 
-
-      
-            
-      

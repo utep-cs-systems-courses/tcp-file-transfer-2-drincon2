@@ -13,13 +13,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
    # Connect to server
    s.connect((host, port))
    # Open file
-   with open("fileTest.txt", "rb") as cf:
+   with open("fileTest.txt", "r") as cf:
       # Transfer file
       tf = cf.read(1024)
-      for line in tf:
-         # Send file
-         data = s.send(bytes(str(line), 'utf-8')) 
+      # Send file
+      data = s.send(str(tf).encode('utf-8')) 
+         
    
 print('Received', repr(data))
 s.close()
-

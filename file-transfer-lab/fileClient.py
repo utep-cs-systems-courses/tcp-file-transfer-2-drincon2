@@ -30,22 +30,22 @@ try:
    host, serverPort = re.split(":", server)
    port = int(serverPort)
 except:
-   print("Unable to parse port from '%s'" % server)
+   print(">>Unable to parse port from '%s'" % server)
    sys.exit(1)
    
 # Make socket to connect to server and send files
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
    # Check socket can be opened
    if s is None:
-      print("Socket could not be opened")
+      print(">>Socket could not be opened")
       sys.exit(1)
    # Connect to server
    s.connect((host, port))
       
    # Send files 
    while True:
-      usr_in = input("Please type the file you want to upload to server.\n" +
-                     "Alternatively, if you wish to close connection to server, type 'exit'.\n")
+      usr_in = input(">>Please type the file you want to upload to server.\n" +
+                     ">>Alternatively, if you wish to close connection to server, type 'exit'.\n>>")
       # Close connection to server
       if usr_in == "exit":
          sys.exit(0)
@@ -61,12 +61,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                   tf = cf.read(1024)
                   # Send all file data to server
                   s.sendall(tf.encode())
-                  print("File sent!\n")
                   if not tf:
                      break
             cf.close()
          else:
-            print("File %s not found" % filename) 
+            print(">>File %s not found" % filename) 
 
 s.close() 
 

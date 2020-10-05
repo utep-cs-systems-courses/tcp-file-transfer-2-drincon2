@@ -1,35 +1,55 @@
 #! /usr/bin/env python3
 
-# Client
-import socket
+# server
+import sys, re, socket
+# for params
+sys.path.append("../lib")       
+import params
+# For proxy
+sys.path.append("../framed-echo")
+from framedSock import framedSend, framedReceive
 
-# localhost and port
-host = '127.0.0.1'
-port = 8080
+switchesVarDefaults = (
+    (('-l', '--listenPort') ,'listenPort', 50001),
+    (('-d', '--debug'), "debug", False), # boolean (set if present)
+    (('-?', '--usage'), "usage", False), # boolean (set if present)
+    )
 
-# Server socket
+progname = "dummy_server"
+paramMap = params.parseParams(switchesVarDefaults)
+
+debug, listenPort = paramMap['debug'], paramMap['listenPort']
+
+if paramMap['usage']:
+    params.usage()
+    
+# Server connection to client
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-   # Connect to client 
-   s.bind((host, port))
-   # Allow 1 client connection
+   # Check server can bind to client
+   try:
+      s.bind(("127.0.0.1", listenPort))
+   except socket.error as msg:
+      print("Bind failed. Error code : " + str(msg[0]) + " Message " + msg[1])
+      s.close()
+   # Accept to 1 connection   
    s.listen()
+   # Wait for client connection to server
+   conn, addr = s.accept()
    
-   # File receive loop
-   while True:
-      # Wait for incoming client connection
-      conn, addr = s.accept()
-      # File instance
-      fi = 1
-      with open("fileTest" + str(fi) + ".txt", "w") as sf:
-         # Client transfer file
-         ctf = conn.recv(1024)
-         udata = ctf.decode('utf-8')
-         for line in udata:
-            sf.write(line)   
-         
-      print("File received!")
-      sf.close()
-      
+   # Save client file in server
+   with conn:
+      while True:
+         data = conn.recv(1024)
+         udata = data.decode()
+         if udata:
+            fi = 1
+            with open("fileTest" + str(fi) + ".txt", "w") as fp:
+               for line in udata:
+                  fp.write(line)
+            fp.close()
+            print("File received!")
+         elif not data:
+            break
    print("Closing connection to client")
    conn.close()
 

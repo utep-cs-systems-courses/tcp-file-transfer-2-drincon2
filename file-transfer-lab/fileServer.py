@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 # server
-import sys, re, socket
+import sys, re, socket, os
 import threading
 # for params
 sys.path.append("../lib")       
@@ -13,6 +13,7 @@ from framedSock import framedSend, framedReceive
 
 # Handle client connection and file transfer
 def handle_client(conn, addr):
+   # Make child do the transfer file work
    print(f">>New connection: {addr} connected.")
    fi = 0
    fi += 1
@@ -34,13 +35,28 @@ def handle_client(conn, addr):
    
 # Start client connection 
 def start(s):
+   # Allow as many connections as needed
    s.listen()
    print(f">>Server is listening on 127.0.0.1")
-   while True:
+   # Use fork to handle multiple clients (maximum of 3 clients)
+   i = 0
+   while i < 3:
       conn, addr = s.accept()
-      thread = threading.Thread(target=handle_client, args=(conn, addr))
-      thread.start()
-      print(f">>Active connections: {threading.activeCount() -1}")
+      pid = os.fork()
+      # Fork failed
+      if pid < 0:
+         print("Fork failed, closing server...")
+         sys.exit(1)
+      # Child
+      elif pid == 0:
+         print("Client connection successful" + str(addr))
+         handle_client(conn, addr)
+         break
+      # Parent
+      else:
+         i += 1
+         status = os.wait()
+   
 
 # Server framework    
 def server():
@@ -65,7 +81,7 @@ def server():
       except socket.error as msg:
          print(">>Bind failed. Error code : " + str(msg[0]) + " Message " + msg[1])
          s.close()
-      # Start client connection to server  
+      # Start client connection   
       start(s)
 
 server()

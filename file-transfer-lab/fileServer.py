@@ -38,25 +38,14 @@ def start(s):
    # Allow as many connections as needed
    s.listen()
    print(f">>Server is listening on 127.0.0.1")
-   # Use fork to handle multiple clients (maximum of 3 clients)
-   i = 0
-   while i < 3:
+   # Use fork to handle multiple clients
+   while True:
       conn, addr = s.accept()
-      pid = os.fork()
-      # Fork failed
-      if pid < 0:
-         print("Fork failed, closing server...")
+      if not conn or not addr:
          sys.exit(1)
-      # Child
-      elif pid == 0:
-         print("Client connection successful" + str(addr))
+      elif not os.fork():
          handle_client(conn, addr)
-         break
-      # Parent
-      else:
-         i += 1
-         status = os.wait()
-   
+         sys.exit(0)
 
 # Server framework    
 def server():

@@ -1,6 +1,9 @@
 #! /usr/bin/env python3
 
 # server
+# Lock mechanism taken from https://stackoverflow.com/questions/26325943/many-threads-to-write-log-file-at-same-time-in-python
+# Warning, Lock has not yet been tested and is thus not implemented
+
 import sys, re, socket, os
 import threading
 # for params
@@ -23,16 +26,28 @@ def handle_client(conn, addr):
    # Save client file
    with conn:
       while True:
-         data = conn.recv(1024)
-         udata = data.decode()
-         if udata:
-            with open(str(fi) + filename, "w") as fp:
-               for line in udata:
-                  fp.write(line)
-            fp.close()
-            print(f">>File received from client {addr}!")
-         elif not data:
-            break
+         # Check file is available
+         if os.access(filename, os.W_OK):
+            # TODO Use lock
+            # lock.acquire()
+            # Save client file
+            data = conn.recv(1024)
+            udata = data.decode()
+            if udata:
+               with open(str(fi) + filename, "w") as fp:
+                  for line in udata:
+                     fp.write(line)
+               fp.close()
+               print(f">>File received from client {addr}!")
+            elif not data:
+               break
+            # TODO Release lock
+            # lock.release()
+         # Block client file upload
+         else:
+            print("file: " + filename + " is currently in use. Try again later.")
+            sys.exit(1)
+               
    print(f">>Closing connection to client {addr}")
    conn.close()
    
@@ -45,9 +60,14 @@ def start(s):
    # Start a new thread for each new client connection
    while True:
       conn, addr = s.accept()
+      # Normal threading
       thread = threading.Thread(target=handle_client, args=(conn, addr))
       thread.start()
       print(f">>Active connections: {threading.activeCount() -1}")
+      # TODO Locked threading
+      # lock = threading.Lock()
+      # handle_client(conn, addr, lock)
+
 
 # Server framework    
 def server():

@@ -1,83 +1,106 @@
 #! /usr/bin/env python3
 
-# server
-# Lock mechanism taken from https://stackoverflow.com/questions/26325943/many-threads-to-write-log-file-at-same-time-in-python
-# Warning, Lock has not yet been tested and is thus not implemented
-
 import sys, re, socket, os
 import threading
-# for params
+# For params
 sys.path.append("../lib")       
 import params
-# For proxy
-sys.path.append("../framed-echo")
-from framedSock import framedSend, framedReceive
+# For framed socket
+from framedSocket import EncapFramedSock
 
+# Client files
+files = set()
+# Lock
+lock = Lock()
+
+
+# File transfer start
+def file_transfer_start(filename):
+   global files, lock
+   lock.acquire()
+   if filename in files:
+      print("File is currently in use")
+      lock.release()
+      sys.exit(1)
+   else:
+      files.add(filename)
+      lock.release()
+
+# File transfer end
+def file_transfer_end(filename):
+   global files, lock
+   lock.acquire()
+   files.remove(filename)
+   lock.release()
+   
+   
 # Handle client connection and file transfer
-def handle_client(conn, addr):
-   # Display client host and port
-   print(f">>New connection: {addr} connected.")
-   fi = 0
-   fi += 1
-   # Get name of file
-   filename = conn.recv(1024).decode()
-   print(filename)
+def handle_client(conn, addr, socket, debug):
+   # File size
+   payload = ""
+   # Get name of file and data
+   try:
+      filename, file_data = socket.receive(debug)
+   except:
+      print(">>File transfer failed. Closing connection...")
+      sys.exit(1)
+      
+   if debug:
+      print("rec'd: ", payload)
+   
+   if payload is None:
+       print("File is empty. Closing connection...")
+       sys.exit(1)
+   
+   filename = filename.decode()
    
    # Save client file
    with conn:
-      while True:
-         # Check file is available
-         if os.access(filename, os.W_OK):
-            # TODO Use lock
-            # lock.acquire()
-            # Save client file
-            data = conn.recv(1024)
-            udata = data.decode()
-            if udata:
-               with open(str(fi) + filename, "w") as fp:
-                  for line in udata:
-                     fp.write(line)
-               fp.close()
-               print(f">>File received from client {addr}!")
-            elif not data:
-               break
-            # TODO Release lock
-            # lock.release()
-         # Block client file upload
+      try:
+         if not os.path.exists("./Server_Files/" + filename):
+            # Attempt to lock thread transfering file
+            file_transfer_start(filename)
+            with open("./Server_Files/" + filename, "w") as fp:
+               for line in udata:
+                  fp.write(line)
+            fp.close()
+            print(f">>File {filename} received from client {addr}!")
+            # Release lock on thread      
+            file_transfer_end(filename)
          else:
-            print("file: " + filename + " is currently in use. Try again later.")
+            print("File already exists on server. Closing connection...")
             sys.exit(1)
-               
-   print(f">>Closing connection to client {addr}")
+      except:
+         print("File" + filename + "failed to upload. Closing connection...")
+         sys.exit(1)
+   print(f">>Closing connection to client {addr}")   
    conn.close()
-   
-   
-# Start client connection 
-def start(s):
-   # Allow as many connections as needed
-   s.listen()
-   print(f">>Server is listening on 127.0.0.1")
-   # Start a new thread for each new client connection
-   while True:
-      conn, addr = s.accept()
-      # Normal threading
-      thread = threading.Thread(target=handle_client, args=(conn, addr))
-      thread.start()
-      print(f">>Active connections: {threading.activeCount() -1}")
-      # TODO Locked threading
-      # lock = threading.Lock()
-      # handle_client(conn, addr, lock)
 
 
-# Server framework    
-def server():
+# Server
+class Server(Thread):
+   def __init__(self, s_addr, debug):
+      Thread.__init__(self)
+      self.conn, self.addr = s_addr
+      self.file_s = EncapFramedSock(s_addr)
+      self.debug = debug
+      
+   def run(self):
+       print(f">>New connection: {self.addr} connected.")
+       while True:
+          # Handle client
+          handle_client(self.conn, self.addr, self.file_s, self.debug)
+   
+
+# Listening socket 
+def listening_socket():
    switchesVarDefaults = (
        (('-l', '--listenPort') ,'listenPort', 50001),
        (('-d', '--debug'), "debug", False), # boolean (set if present)
        (('-?', '--usage'), "usage", False), # boolean (set if present)
        )
 
-   progname = "dummy_server"
+   progname = "fileServer"
    paramMap = params.parseParams(switchesVarDefaults)
 
    debug, listenPort = paramMap['debug'], paramMap['listenPort']
@@ -92,7 +115,16 @@ def server():
       except socket.error as msg:
          print(">>Bind failed. Error code : " + str(msg[0]) + " Message " + msg[1])
          s.close()
-      # Start client connection   
-      start(s)
+      # Allow as many connections as needed
+      s.listen()
+      print(f">>Server is listening on 127.0.0.1")
+      # Start client connection 
+      while True:
+         # Accept client connection
+         conn, addr = s.accept()
+         # Start client connection 
+         server = Server((conn, addr))
+         server.start()
+         print(f">>Active connections: {threading.activeCount() -1}")
 
-server()
+listening_socket()

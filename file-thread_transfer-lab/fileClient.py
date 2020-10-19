@@ -1,12 +1,10 @@
 #! /usr/bin/env python3
-
 # Client
-import socket, sys, re, os
+import socket, sys, re
+import os
 # For params
 sys.path.append("../lib")
 import params
-# For framed socket
-from framedSocket import EncapFramedSock
 
 # client framework
 def client():
@@ -16,14 +14,14 @@ def client():
        (('-d', '--debug'), "debug", False), # boolean (set if present)
        (('-?', '--usage'), "usage", False), # boolean (set if present)
        )
-    
+
    progname = "fileClient"
    paramMap = params.parseParams(switchesVarDefaults)
    server, usage, debug  = paramMap["server"], paramMap["usage"], paramMap["debug"]
-
+   
    if usage:
       params.usage()
-    
+      
    # Client connection to server
    # Split server into local host and port
    try:
@@ -32,7 +30,6 @@ def client():
    except:
       print(">>Unable to parse port from '%s'" % server)
       sys.exit(1)
-   
    # Make socket to connect and send files to server
    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
       # Check socket can be opened
@@ -42,8 +39,7 @@ def client():
       # Connect to server
       s.connect((host, port))
       
-      # TODO Send client file to frame socket
-      # Send files. Try breaking loop if errors occur here or in thread_framework
+      # Send files 
       while True:
          usr_in = input(">>Please type the file you want to upload to server.\n" +
                         ">>Alternatively, if you wish to close connection to server, type 'exit'.\n>>")
@@ -52,30 +48,26 @@ def client():
             sys.exit(0)
          # Send file to server
          else:
-            # File name
-            filename = usr_in
             # Check file exists in current directory
-            if os.path.exists(filename):          
-               # Make new encapsulated socket 
-               encap_s = EncapFramedSock((s, (host, port)))
+            filename = usr_in
+            if os.path.exists(filename):   
+               # Send name of file
+               s.send(filename.encode())
+
                # Send file data
                with open(filename, "r") as cf:
                   while True:
                      # Transfer file
                      tf = cf.read(1024)
-                     # Check file is not empty
-                     if len(tf) == 0:
-                        print("File empty, closing connection...")
-                        sys.exit(1)
-                     # Send file to encapsulated socket
-                     encap_s.send(filename, tf, debug)
+                     # Send all file data to server
+                     s.send(tf.encode())
+                     if not tf:
+                        break
                cf.close()
             else:
                print("File %s not found" % filename) 
-   
+
    print('>>Received', repr(data))
    s.close() 
-   
-   
-client()
 
+client()

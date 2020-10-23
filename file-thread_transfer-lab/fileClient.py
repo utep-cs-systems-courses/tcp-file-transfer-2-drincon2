@@ -64,6 +64,18 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
             print(">>File sent")
             
+            # Receive prompt from server if file is received or already exists
+            prompt_file, server_prompt = encap_s.framedReceive(debug)
+            state = server_prompt.decode()
+            
+            # Continue file transfer or overwrite file
+            if state == "cnt":
+               continue
+            else:
+               usr_response = input(">>" + state)
+               encap_s.framedSend(filename, usr_response.encode(), debug)
+               state = "cnt"
+            
          else:
             print("File %s not found" % filename) 
 

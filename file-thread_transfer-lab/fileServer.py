@@ -13,32 +13,6 @@ lock = threading.Lock()
 # Server files
 files = list()
 
-# Server framework
-switchesVarDefaults = (
-    (('-l', '--listenPort') ,'listenPort', 50001),
-    (('-d', '--debug'), "debug", False), # boolean (set if present)
-    (('-?', '--usage'), "usage", False), # boolean (set if present)
-    )
-
-progname = "fileServer"
-paramMap = params.parseParams(switchesVarDefaults)
-
-debug, listenPort = paramMap['debug'], paramMap['listenPort']
-
-if paramMap['usage']:
-   params.usage()
-
-# Server connection to client
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-bindAddr = ("127.0.0.1", listenPort)
-try:
-   s.bind(bindAddr)
-except socket.error as msg:
-   print(">>Bind failed. Error code : " + str(msg[0]) + " Message " + msg[1])
-   s.close()
-s.listen()
-print(f">>Server listening on: {bindAddr}")
-
 # Server file transfer
 class Server(threading.Thread):
    def __init__(self, s):
@@ -79,9 +53,21 @@ class Server(threading.Thread):
          save_file.close()
          print(f">>File received from client {self.addr}!")
          self.file_transfer_end(file_name)
+         self.file_s.framedSend(file_name, b"cnt", debug)
       else:
-         print(f">>Filename {file_name} already exists in server. Closing connection...")
-         sys.exit(1)
+         self.file_s.framedSend(file_name, b"File is already in server. Overwrite? (Y/n)", debug)
+         client_file, client_response = self.file_s.framedReceive(debug)
+         client_response = client_response.decode()
+         if client_response == "Y":
+            # Overwrite file
+            with open("./Server_Files/" + file_name, "w+b") as save_file:
+               save_file.write(file_data)
+            save_file.close()
+            print(f">>File {file_name} overwritten by client {self.addr}!")
+         else:
+            # Close connection to user
+            print("Closing connection...")
+            sys.exit(1)
       
    # Handle client
    def run(self):
@@ -99,6 +85,31 @@ class Server(threading.Thread):
       self.save_file(file_name, file_data)
       
    
+# Server framework
+switchesVarDefaults = (
+    (('-l', '--listenPort') ,'listenPort', 50001),
+    (('-d', '--debug'), "debug", False), # boolean (set if present)
+    (('-?', '--usage'), "usage", False), # boolean (set if present)
+    )
+
+progname = "fileServer"
+paramMap = params.parseParams(switchesVarDefaults)
+
+debug, listenPort = paramMap['debug'], paramMap['listenPort']
+
+if paramMap['usage']:
+   params.usage()
+
+# Server connection to client
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+bindAddr = ("127.0.0.1", listenPort)
+try:
+   s.bind(bindAddr)
+except socket.error as msg:
+   print(">>Bind failed. Error code : " + str(msg[0]) + " Message " + msg[1])
+   s.close()
+s.listen()
+print(f">>Server listening on: {bindAddr}")
 
 while True:
    sock = s.accept()

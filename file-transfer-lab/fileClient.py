@@ -6,9 +6,9 @@ import os
 # For params
 sys.path.append("../lib")
 import params
-# For proxy
+# For framed socket
 sys.path.append("../framed-echo")
-from framedSock import framedSend, framedReceive
+from framedSocket import FramedSock
 
 # Client switches
 switchesVarDefaults = (
@@ -42,6 +42,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
    # Connect to server
    s.connect((host, port))
       
+   # Make new framed socket for client 
+   encap_s = FramedSock((s, (host, port)))   
+      
    # Send files 
    while True:
       usr_in = input(">>Please type the file you want to upload to server.\n" +
@@ -55,17 +58,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
          filename = usr_in
          if os.path.exists(filename):   
             # Open file specified by user
-            with open(filename, "r") as cf:
-               while True:
-                  # Transfer file
-                  tf = cf.read(1024)
-                  # Send all file data to server
-                  s.sendall(tf.encode())
-                  if not tf:
-                     break
-            cf.close()
+            with open(filename, "rb") as file:
+               file_data = file.read()
+               encap_s.framedSend(filename, file_data, debug)
+            print(">>File sent")
+            
+            # Receive prompt from server if file is received or already exists
+            prompt_file, server_prompt = encap_s.framedReceive(debug)
+            state = server_prompt.decode()
+            
+            # Continue file transfer or overwrite file
+            if state == "cnt":
+               continue
+            else:
+               usr_response = input(">>" + state)
+               encap_s.framedSend(filename, usr_response.encode(), debug)
+               state = "cnt"            
          else:
             print(">>File %s not found" % filename) 
-
-s.close() 
-

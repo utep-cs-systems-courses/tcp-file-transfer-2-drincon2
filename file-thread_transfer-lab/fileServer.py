@@ -75,8 +75,6 @@ class Server(threading.Thread):
       print(f">>New connection: {self.addr} connected.")
       # Get name of file
       file_name, file_data = self.file_s.framedReceive(debug)
-      # Get file size
-      if debug: print("rec'd: ", payload)
       # Check file is not empty
       if file_data is None:
          print(">>File is empty. Closing connection...")
